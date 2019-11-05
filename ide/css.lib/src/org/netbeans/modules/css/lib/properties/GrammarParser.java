@@ -18,6 +18,8 @@
  */
 package org.netbeans.modules.css.lib.properties;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.netbeans.modules.css.lib.api.properties.FixedTextGrammarElement;
@@ -53,6 +55,11 @@ public class GrammarParser {
     private String propertyName;
     private String expression;
 
+    private static Map<String, GroupGrammarElement> groupGrammarElementCache 
+            = new HashMap<>();
+    private static Map<String, TokenAcceptor> tokenAcceptorCache 
+            = new HashMap<>();
+    
     public GrammarParser(String expression, String propertyName) {
         this.expression = expression;
         this.propertyName = propertyName;
@@ -144,12 +151,18 @@ public class GrammarParser {
 
                     ParserInput pinput = new ParserInput(property.getGrammar());
                     String propName = property.getName();
-                    last = new GroupGrammarElement(parent, group_index.getAndIncrement(), propName);
+                    
+                    if(groupGrammarElementCache.containsKey(propName)) {
+                        last = groupGrammarElementCache.get(propName);
+                    }
+                    else {
+                        last = new GroupGrammarElement(parent, group_index.getAndIncrement(), propName);
 
-
-                    //ignore inherit tokens in the subtree
-                    parseElements(pinput, (GroupGrammarElement) last, true, group_index, openedParenthesis);
-
+                         //ignore inherit tokens in the subtree
+                        parseElements(pinput, (GroupGrammarElement) last, true, group_index, openedParenthesis);
+                        groupGrammarElementCache.put(propName, (GroupGrammarElement) last);
+                    }
+                    
                     parent.addElement(last);
                     break;
 
@@ -169,7 +182,14 @@ public class GrammarParser {
                         }
                     }
                     String unitName = buf.toString();
-                    TokenAcceptor acceptor = TokenAcceptor.getAcceptor(unitName);
+                    TokenAcceptor acceptor;
+                    if(tokenAcceptorCache.containsKey(unitName)) {
+                        acceptor = tokenAcceptorCache.get(unitName);
+                    }
+                    else {
+                        acceptor = TokenAcceptor.getAcceptor(unitName);
+                    }
+                    
                     if(acceptor == null) {
                         throw new IllegalStateException(
                                 String.format("Property '%s' parsing error - No unit property value acceptor for '%s'. "
