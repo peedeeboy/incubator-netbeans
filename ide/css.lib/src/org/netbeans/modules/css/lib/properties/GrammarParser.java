@@ -18,9 +18,8 @@
  */
 package org.netbeans.modules.css.lib.properties;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.StringTokenizer;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.netbeans.modules.css.lib.api.properties.FixedTextGrammarElement;
 import org.netbeans.modules.css.lib.api.properties.GrammarElement;
@@ -55,10 +54,10 @@ public class GrammarParser {
     private String propertyName;
     private String expression;
 
-    private static Map<String, GroupGrammarElement> groupGrammarElementCache 
-            = new HashMap<>();
-    private static Map<String, TokenAcceptor> tokenAcceptorCache 
-            = new HashMap<>();
+    private static final Map<String, GroupGrammarElement> groupGrammarElementCache 
+            = new ConcurrentHashMap<>();
+    private static final Map<String, TokenAcceptor> tokenAcceptorCache 
+            = new ConcurrentHashMap<>();
     
     public GrammarParser(String expression, String propertyName) {
         this.expression = expression;
@@ -156,13 +155,14 @@ public class GrammarParser {
                         last = groupGrammarElementCache.get(propName);
                     }
                     else {
-                        last = new GroupGrammarElement(parent, group_index.getAndIncrement(), propName);
+                    last = new GroupGrammarElement(parent, group_index.getAndIncrement(), propName);
 
-                         //ignore inherit tokens in the subtree
-                        parseElements(pinput, (GroupGrammarElement) last, true, group_index, openedParenthesis);
+
+                    //ignore inherit tokens in the subtree
+                    parseElements(pinput, (GroupGrammarElement) last, true, group_index, openedParenthesis);
                         groupGrammarElementCache.put(propName, (GroupGrammarElement) last);
                     }
-                    
+
                     parent.addElement(last);
                     break;
 
@@ -188,6 +188,7 @@ public class GrammarParser {
                     }
                     else {
                         acceptor = TokenAcceptor.getAcceptor(unitName);
+                        tokenAcceptorCache.put(unitName, acceptor);
                     }
                     
                     if(acceptor == null) {
